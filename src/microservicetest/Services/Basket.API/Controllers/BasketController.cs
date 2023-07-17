@@ -1,4 +1,5 @@
-﻿using Basket.API.Models;
+﻿using Basket.API.GrpcServices;
+using Basket.API.Models;
 using Basket.API.Repositories;
 using CoreApiResponse;
 using Microsoft.AspNetCore.Mvc;
@@ -11,17 +12,19 @@ namespace Basket.API.Controllers
     public class BasketController : BaseController
     {
         IBasketRepository _basketRepository;
-        public BasketController(IBasketRepository basketRepository)
+        DiscountGrpcService _discountGrpcService;
+        public BasketController(IBasketRepository basketRepository, DiscountGrpcService discountGrpcService)
         {
             _basketRepository = basketRepository;
+            _discountGrpcService = discountGrpcService;
         }
         [HttpGet]
-        [ProducesResponseType(typeof(ShoppingCart),(int)HttpStatusCode.OK)]
+        [ProducesResponseType(typeof(ShoppingCart), (int)HttpStatusCode.OK)]
         public async Task<IActionResult> GetBasket(string userName)
         {
             try
             {
-                var basket=await _basketRepository.GetBasket(userName);
+                var basket = await _basketRepository.GetBasket(userName);
                 return CustomResult("Basket data Load Successfully.", basket);
             }
             catch (Exception ex)
@@ -31,25 +34,30 @@ namespace Basket.API.Controllers
             }
         }
         [HttpPost]
-        [ProducesResponseType(typeof(ShoppingCartItem),(int)HttpStatusCode.OK)]
-        public async Task<IActionResult> UpdateBasket([FromBody]ShoppingCart basket)
+        [ProducesResponseType(typeof(ShoppingCartItem), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> UpdateBasket([FromBody] ShoppingCart basket)
         {
             try
             {
                 //TODO: Communicate discount.grpc
                 //Calculate latest Price
-
+                //Create discount grpc service
+                foreach (var item in basket.Items)
+                {
+                    var coupon = await _discountGrpcService.GetDiscount(item.ProductId);
+                    item.Price -= coupon.Amount;
+                }
                 return CustomResult("Basket modified done.", await _basketRepository.UpdateBasket(basket));
             }
             catch (Exception ex)
             {
-                return CustomResult(ex.Message,HttpStatusCode.BadRequest);
-                
+                return CustomResult(ex.Message, HttpStatusCode.BadRequest);
+
             }
         }
         [HttpDelete]
-        [ProducesResponseType(typeof(void),(int)HttpStatusCode.OK)]
-        public async Task<IActionResult>DeleteBasket(string userName)
+        [ProducesResponseType(typeof(void), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> DeleteBasket(string userName)
         {
             try
             {
@@ -59,7 +67,7 @@ namespace Basket.API.Controllers
             catch (Exception ex)
             {
                 return CustomResult(ex.Message, HttpStatusCode.BadRequest);
-              
+
             }
         }
     }
