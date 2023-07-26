@@ -44,7 +44,9 @@ namespace Discount.API.Repository
                 return new Coupon()
                 {
                     Amount = 0,
-                    ProductName = "No Discount"
+                    ProductName = "No Discount",
+                    ProductId= "No Discount This id",
+                    Description="No discount this"
                 };
             }
             return coupon;
